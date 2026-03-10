@@ -1,0 +1,39 @@
+from django.db import models
+
+class User(models.Model):
+    
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('user', 'User'),
+        ('moderator', 'Moderator'),
+    ]
+    
+    NOTIFICATION_CHOICES = [
+        ('email', 'Email'),
+        ('sms', 'SMS'),
+        ('push', 'Push'),
+    ]
+
+    email                  = models.CharField(max_length=255, null=False)
+    password_hash          = models.CharField(max_length=255, null=False)
+    first_name             = models.CharField(max_length=100, blank=True, null=True)
+    last_name              = models.CharField(max_length=100, blank=True, null=True)
+    phone                  = models.CharField(max_length=20, blank=True, null=True)
+    role                   = models.CharField(max_length=20, choices=ROLE_CHOICES, null=False)
+    is_active              = models.BooleanField(default=True)
+    email_verified         = models.BooleanField(default=False)
+    phone_verified         = models.BooleanField(default=False)
+    profile_picture_url    = models.CharField(max_length=500, blank=True, null=True)
+    preferred_notification = models.CharField(max_length=20, choices=NOTIFICATION_CHOICES, blank=True, null=True)
+    created_at             = models.DateTimeField(auto_now_add=True)
+    updated_at             = models.DateTimeField(auto_now=True)
+    deleted_at             = models.DateTimeField(blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.email})"
+
+    class Meta:
+        db_table = 'users'
