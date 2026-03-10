@@ -2,8 +2,8 @@ from django.db import models
 from django.utils import timezone
 from io import BytesIO
 import qrcode
-from backend.user.models import User_Data
-from backend.content.models import Experience
+from user.models import User_Data
+from content.models import Experience
 
 
 class Booking(models.Model):
@@ -25,7 +25,7 @@ class Booking(models.Model):
         max_length=50, unique=True, db_index=True, null=False
     )
     user_id = models.ForeignKey(
-        User_Data, on_delete=models.CASCADE, related_name="user", db_index=True
+        User_Data, on_delete=models.CASCADE, related_name="user_id", db_index=True
     )
     experience_id = models.ForeignKey(
         Experience,
@@ -75,7 +75,7 @@ class Booking(models.Model):
         ordering = ["-booking_date"]
         # Add composite index
         indexes = [
-            models.Index(fields=["monument", "booking_date", "status"]),
+            models.Index(fields=["experience_id", "booking_date", "status"]),
         ]
 
 
@@ -165,7 +165,7 @@ class Ticket(models.Model):
         db_table = "tickets"
         ordering = ["created_at"]
         indexes = [
-            models.Index(fields=["booking"]),
+            models.Index(fields=["booking_id"]),
             models.Index(fields=["qr_code"]),
             models.Index(fields=["is_used"]),
         ]
