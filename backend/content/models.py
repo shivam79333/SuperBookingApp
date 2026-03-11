@@ -1,20 +1,21 @@
-# models.py
-
+from django.utils import timezone
 from django.db import models
-from django.core.validators import MinValueValidator, DecimalValidator
+from django.core.validators import MinValueValidator
+
 
 class Category(models.Model):
-    id          = models.BigAutoField(primary_key=True)
-    name        = models.CharField(max_length=100, unique=True,
-                                   help_text="e.g. temple, fort, museum")
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(
+        max_length=100, unique=True, help_text="e.g. temple, fort, museum"
+    )
     description = models.TextField(blank=True, null=True)
-    icon_url    = models.CharField(max_length=500, blank=True, null=True)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+    icon_url = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "categories"
-        indexes  = [
+        indexes = [
             models.Index(fields=["name"], name="idx_categories_name"),
         ]
         constraints = [
@@ -26,58 +27,51 @@ class Category(models.Model):
 
 
 class Experience(models.Model):
-    id                 = models.BigAutoField(primary_key=True)
-    category_id          = models.ForeignKey(
-                             Category,
-                             on_delete=models.RESTRICT,
-                             db_column="category_id",
-                             related_name="experiences",
-                         )
-    name               = models.CharField(max_length=255)
-    description        = models.TextField(blank=True, null=True)
-    location           = models.CharField(max_length=255)
-    latitude           = models.DecimalField(
-                             max_digits=10, decimal_places=8,
-                             blank=True, null=True
-                         )
-    longitude          = models.DecimalField(
-                             max_digits=11, decimal_places=8,
-                             blank=True, null=True
-                         )
-    image_url          = models.CharField(max_length=500, blank=True, null=True)
-    max_daily_capacity = models.IntegerField(
-                             help_text="Maximum visitors per day"
-                         )
-    entry_fee_base     = models.DecimalField(max_digits=10, decimal_places=2)
-    is_open            = models.BooleanField(default=True)
-    opening_time       = models.TimeField(blank=True, null=True)
-    closing_time       = models.TimeField(blank=True, null=True)
-    last_entry_time    = models.TimeField(blank=True, null=True)
-    created_at         = models.DateTimeField(auto_now_add=True)
-    updated_at         = models.DateTimeField(auto_now=True)
-    deleted_at         = models.DateTimeField(
-                             blank=True, null=True,
-                             help_text="Soft delete — NULL means active"
-                         )
+    id = models.BigAutoField(primary_key=True)
+    category_id = models.ForeignKey(
+        Category,
+        on_delete=models.RESTRICT,
+        db_column="category_id",
+        related_name="experiences",
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=255)
+    latitude = models.DecimalField(
+        max_digits=10, decimal_places=8, blank=True, null=True
+    )
+    longitude = models.DecimalField(
+        max_digits=11, decimal_places=8, blank=True, null=True
+    )
+    image_url = models.CharField(max_length=500, blank=True, null=True)
+    max_daily_capacity = models.IntegerField(help_text="Maximum visitors per day")
+    entry_fee_base = models.DecimalField(max_digits=10, decimal_places=2)
+    is_open = models.BooleanField(default=True)
+    opening_time = models.TimeField(blank=True, null=True)
+    closing_time = models.TimeField(blank=True, null=True)
+    last_entry_time = models.TimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(
+        blank=True, null=True, help_text="Soft delete — NULL means active"
+    )
 
     class Meta:
         db_table = "experience"
-        indexes  = [
-            models.Index(fields=["category"],            name="idx_experience_category_id"),
-            models.Index(fields=["name"],                name="idx_experience_name"),
-            models.Index(fields=["category", "is_open"], name="idx_experience_category_is_open"),
+        indexes = [
+            models.Index(fields=["category_id"], name="idx_experience_category_id"),
+            models.Index(fields=["name"], name="idx_experience_name"),
+            models.Index(
+                fields=["category_id", "is_open"],
+                name="idx_category_is_open",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.category})"
-
-    # ------------------------------------------------------------------ #
-    #  Soft-delete helpers                                                 #
-    # ------------------------------------------------------------------ #
+        return f"{self.name} ({self.category_id})"
 
     def soft_delete(self):
         """Mark the record as deleted without removing it from the DB."""
-        from django.utils import timezone
         self.deleted_at = timezone.now()
         self.save(update_fields=["deleted_at", "updated_at"])
 
@@ -92,51 +86,47 @@ class Experience(models.Model):
 
 
 class PricingRule(models.Model):
-
     TICKET_TYPE_CHOICES = [
-        ('adult', 'Adult'),
-        ('child', 'Child'),
-        ('senior', 'Senior'),
+        ("adult", "Adult"),
+        ("child", "Child"),
+        ("senior", "Senior"),
     ]
 
-    experience_id            = models.ForeignKey(
+    experience_id = models.ForeignKey(
         Experience,
         on_delete=models.CASCADE,
-        related_name='pricing_rules',
+        related_name="pricing_rules",
         db_index=True,
-        help_text='Monument/Experience this pricing applies to'
+        help_text="Monument/Experience this pricing applies to",
     )
-    ticket_type           = models.CharField(
+    ticket_type = models.CharField(
         max_length=20,
         choices=TICKET_TYPE_CHOICES,
         null=False,
-        help_text='Type of ticket (adult, child, senior)'
+        help_text="Type of ticket (adult, child, senior)",
     )
-    base_price            = models.DecimalField(
+    base_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=False,
         validators=[MinValueValidator(0.00)],
-        help_text='Base price for this ticket type'
+        help_text="Base price for this ticket type",
     )
-    seasonal_multiplier   = models.DecimalField(
+    seasonal_multiplier = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=1.0,
         validators=[MinValueValidator(0.0)],
-        help_text='1.5 for peak season, 0.8 for off-season'
+        help_text="1.5 for peak season, 0.8 for off-season",
     )
-    valid_from            = models.DateField(
-        null=False,
-        help_text='Start date for this pricing rule'
+    valid_from = models.DateField(
+        null=False, help_text="Start date for this pricing rule"
     )
-    valid_to              = models.DateField(
-        blank=True,
-        null=True,
-        help_text='End date. NULL means ongoing'
+    valid_to = models.DateField(
+        blank=True, null=True, help_text="End date. NULL means ongoing"
     )
-    created_at            = models.DateTimeField(auto_now_add=True)
-    updated_at            = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def get_final_price(self):
         """Calculate final price after applying seasonal multiplier."""
@@ -145,8 +135,9 @@ class PricingRule(models.Model):
     def is_active(self):
         """Check if pricing rule is currently active."""
         from django.utils import timezone
+
         today = timezone.now().date()
-        
+
         if self.valid_to:
             return self.valid_from <= today <= self.valid_to
         return self.valid_from <= today
@@ -156,113 +147,105 @@ class PricingRule(models.Model):
         return self.valid_to is None
 
     def __str__(self):
-        return f"{self.experience.name} - {self.ticket_type} (₹{self.base_price})"
+        return f"{self.experience_id.name} - {self.ticket_type} (₹{self.base_price})"
 
     class Meta:
-        db_table = 'pricing_rules'
-        ordering = ['-valid_from']
-        unique_together = [
-            ('experience', 'ticket_type', 'valid_from', 'valid_to')
-        ]
+        db_table = "pricing_rules"
+        ordering = ["-valid_from"]
+        unique_together = [("experience_id", "ticket_type", "valid_from", "valid_to")]
         indexes = [
-            models.Index(fields=['experience']),
+            models.Index(fields=["experience_id"]),
             models.Index(
-                fields=['experience', 'ticket_type', 'valid_from', 'valid_to'],
-                name='pricing_composite_idx'
+                fields=["experience_id", "ticket_type", "valid_from", "valid_to"],
+                name="pricing_composite_idx",
             ),
         ]
 
 
-
 class OperatingHours(models.Model):
-
     DAY_OF_WEEK_CHOICES = [
-        ('Monday', 'Monday'),
-        ('Tuesday', 'Tuesday'),
-        ('Wednesday', 'Wednesday'),
-        ('Thursday', 'Thursday'),
-        ('Friday', 'Friday'),
-        ('Saturday', 'Saturday'),
-        ('Sunday', 'Sunday'),
+        ("Monday", "Monday"),
+        ("Tuesday", "Tuesday"),
+        ("Wednesday", "Wednesday"),
+        ("Thursday", "Thursday"),
+        ("Friday", "Friday"),
+        ("Saturday", "Saturday"),
+        ("Sunday", "Sunday"),
     ]
 
-    experience            = models.ForeignKey(
+    experience = models.ForeignKey(
         Experience,
         on_delete=models.CASCADE,
-        related_name='operating_hours',
+        related_name="operating_hours",
         db_index=True,
-        help_text='Monument/Experience these hours apply to'
+        help_text="Monument/Experience these hours apply to",
     )
-    day_of_week           = models.CharField(
+    day_of_week = models.CharField(
         max_length=10,
         choices=DAY_OF_WEEK_CHOICES,
         null=False,
-        help_text='Day of the week'
+        help_text="Day of the week",
     )
-    opens_at              = models.TimeField(
-        blank=True,
-        null=True,
-        help_text='Opening time (NULL if closed)'
+    opens_at = models.TimeField(
+        blank=True, null=True, help_text="Opening time (NULL if closed)"
     )
-    closes_at             = models.TimeField(
-        blank=True,
-        null=True,
-        help_text='Closing time (NULL if closed)'
+    closes_at = models.TimeField(
+        blank=True, null=True, help_text="Closing time (NULL if closed)"
     )
-    is_closed             = models.BooleanField(
-        default=False,
-        help_text='True if closed on this day'
+    is_closed = models.BooleanField(
+        default=False, help_text="True if closed on this day"
     )
     special_closure_reason = models.CharField(
         max_length=255,
         blank=True,
         null=True,
-        help_text='Reason for closure (e.g., Maintenance, Holiday)'
+        help_text="Reason for closure (e.g., Maintenance, Holiday)",
     )
 
     def is_open_now(self):
         """Check if experience is open at current time."""
-        from django.utils import timezone
-        from datetime import datetime
-        
         now = timezone.now()
-        current_day = now.strftime('%A')  # Monday, Tuesday, etc.
+        current_day = now.strftime("%A")  # Monday, Tuesday, etc.
         current_time = now.time()
-        
+
         # Check if it's the correct day
         if self.day_of_week != current_day:
             return False
-        
+
         # Check if closed
         if self.is_closed:
             return False
-        
+
         # Check if time is within operating hours
         if self.opens_at and self.closes_at:
             return self.opens_at <= current_time <= self.closes_at
-        
+
         return False
 
     def get_hours_display(self):
         """Get human-readable hours."""
         if self.is_closed:
-            reason = f" - {self.special_closure_reason}" if self.special_closure_reason else ""
+            reason = (
+                f" - {self.special_closure_reason}"
+                if self.special_closure_reason
+                else ""
+            )
             return f"Closed{reason}"
-        
+
         if self.opens_at and self.closes_at:
             return f"{self.opens_at.strftime('%H:%M')} - {self.closes_at.strftime('%H:%M')}"
-        
+
         return "Hours not set"
 
     def __str__(self):
-        return f"{self.experience.name} - {self.day_of_week}: {self.get_hours_display()}"
+        return (
+            f"{self.experience.name} - {self.day_of_week}: {self.get_hours_display()}"
+        )
 
     class Meta:
-        db_table = 'operating_hours'
-        ordering = ['day_of_week']
-        unique_together = [
-            ('experience', 'day_of_week')
-        ]
+        db_table = "operating_hours"
+        ordering = ["day_of_week"]
+        unique_together = [("experience", "day_of_week")]
         indexes = [
-            models.Index(fields=['experience']),
+            models.Index(fields=["experience"]),
         ]
