@@ -32,11 +32,18 @@ export const logout = () => {
 
 // Setup phone login
 export const setupRecaptcha = (phoneNumber) => {
-  window.recaptchaVerifier = new RecaptchaVerifier(
-    "recaptcha-container",
-    { size: "invisible" },
-    auth
-  );
+   if (!window.recaptchaVerifier) {
+
+    window.recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => {}
+      }
+    );
+
+  }
 
   const appVerifier = window.recaptchaVerifier;
   return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
