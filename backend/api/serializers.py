@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from content import models as ContentModel
+from .paginations import StandardResultsSetPagination
 
 
 class ExperienceSerializer(serializers.ModelSerializer):
@@ -24,6 +25,8 @@ class ExperienceSerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
         ]
+
+
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentModel.Location
@@ -32,6 +35,7 @@ class LocationSerializer(serializers.ModelSerializer):
             "name",
             "icon_url",
         ]
+
 
 class ExperienceShortSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,3 +50,27 @@ class ExperienceShortSerializer(serializers.ModelSerializer):
             "is_open",
         ]
 
+
+class CategorySerializer(serializers.ModelSerializer):
+    experiences = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ContentModel.Category
+        fields = ["id", "name", "description", "icon_url", "experiences"]
+
+    def get_experiences(self, obj):
+        experiences = obj.experiences.filter(deleted_at__isnull=True).order_by("id")
+
+        # Get the request from the context
+        request = self.context.get("request")
+
+        # If there is a request, paginate the experiences
+        if request:
+            paginator = StandardResultsSetPagination()
+            paginated_experiences = paginator.paginate_queryset(experiences, request)
+            serializer = ExperienceShortSerializer(paginated_experiences, many=True)
+            return paginator.get_paginated_response(serializer.data).data
+
+        # If there is no request, return the first 10 experiences
+        experiences = experiences[:10]
+        return ExperienceShortSerializer(experiences, many=True).data

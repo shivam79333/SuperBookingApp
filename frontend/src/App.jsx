@@ -1,28 +1,28 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-//import Home from "./pages/Home";
- // import ExperienceDetails from "./pages/ExperienceDetails";
- //import BookingPage from "./pages/BookingPage";
-//import MyBookings from "./pages/MyBookings";
-//import Login from "./pages/Login";
-//import Navbar from "./components/Navbar";
+import Home from "./Page/Home";
+import { ExperienceDetails } from "./Page/ExperienceDetails";
+// import BookingPage from "./pages/BookingPage";
+// import MyBookings from "./pages/MyBookings";
+import Login from "./Page/Login";
+import Navbar from "./components/Navbar";
+import { AuthProvider } from "./context/AuthContext";
 
 import LoginSignup from "./components/LoginSignup";
 function App() {
   return (
-    //<BrowserRouter>
-     // <Navbar />
+    <AuthProvider>
+      <BrowserRouter>
+        <Navbar />
 
-    /* <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/experience/:id" element={<ExperienceDetails />} />
-        <Route path="/booking/:id" element={<BookingPage />} />
-        <Route path="/my-bookings" element={<MyBookings />} />
-        <Route path="/login" element={<LoginSignup />} />
-      </Routes>*/
-     
-   // </BrowserRouter>
-    <LoginSignup />
-   
+        <Routes>
+          {/* <Route path="/" element={<Home />} /> */}
+          <Route path="/experience/:id" element={<ExperienceDetails />} />
+          {/* <Route path="/booking/:id" element={<BookingPage />} /> */}
+          {/* <Route path="/my-bookings" element={<MyBookings />} /> */}
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
