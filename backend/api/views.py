@@ -16,3 +16,11 @@ class ExperienceView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return ContentModel.Experience.objects.filter(id=self.kwargs["id"])
+
+class ExperienceViewList(generics.ListAPIView):
+    serializer_class = ContentSerializer.ExperienceShortSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        return ContentModel.Experience.objects.all()
+

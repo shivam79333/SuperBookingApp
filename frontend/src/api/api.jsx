@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://localhost:7000/api",
 });
 
 export const getExperiences = () => API.get("/experiences");
