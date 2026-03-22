@@ -7,15 +7,15 @@ function Home() {
 
   useEffect(() => {
     getExperiences().then((res) => {
-      setExperiences(res.data);
+      setExperiences([res.data]);
     });
   }, []);
 
   return (
-    <div>
-      <h1>Experiences</h1>
+    <div className="home-page">
+      <h1 className="home-page__title">Experiences</h1>
 
-      <div>
+      <div className="experience-grid">
         {experiences.map((exp) => (
           <ExperienceCard key={exp.id} experience={exp} />
         ))}
