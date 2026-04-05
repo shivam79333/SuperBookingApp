@@ -25,7 +25,7 @@ class Booking(models.Model):
         max_length=50, unique=True, db_index=True, null=False, primary_key= True
     )
     user_id = models.ForeignKey(
-        User_Data, on_delete=models.CASCADE, related_name="user_id", db_index=True
+        User_Data, on_delete=models.CASCADE, related_name="bookings", db_index=True
     )
     experience_id = models.ForeignKey(
         Experience,

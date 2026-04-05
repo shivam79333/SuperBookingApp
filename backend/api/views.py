@@ -75,7 +75,7 @@ class CreateBookingView(APIView):
         serializer_class = ContentSerializer.BookingCreateSerializer(data = request.data)
 
         if serializer_class.is_valid():
-            booking = serializer_class.save() #this creates the instance, as serialiser class had it already
+            booking = serializer_class.save() #user_id = request.user_id, this creates the instance, as serialiser class had it already
             response_serialser = ContentSerializer.BookingDetailSerializer(booking)
             return Response(
                 {

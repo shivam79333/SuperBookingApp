@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from content import models as ContentModel
 from booking import models as BookingModel
+from user.models import User_Data
+from django.contrib.auth.models import User as AuthUser
 from .paginations import StandardResultsSetPagination
 import uuid
 
@@ -107,6 +109,8 @@ class BookingSerializer(serializers.ModelSerializer):
 
 class BookingCreateSerializer(serializers.ModelSerializer):
     """For POST requests - minimal required fields"""
+    user_id = serializers.PrimaryKeyRelatedField(queryset=AuthUser.objects.all())
+
     class Meta:
         model = BookingModel.Booking
         fields = [
@@ -115,9 +119,21 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             "booking_date",
             "slot_time",
             "total_tickets",
-            "total_amount",
+            # "total_amount",
             "special_requests",
         ]
+
+    def validate_user_id(self, auth_user):
+        try:
+            return auth_user.user_data
+        except User_Data.DoesNotExist:
+            raise serializers.ValidationError("No profile found for this user.")
+
+    def create(self, validated_data):
+        experience = validated_data["experience_id"]
+        tickets = validated_data["total_tickets"]
+        validated_data["total_amount"] = experience.entry_fee_base * tickets
+        return BookingModel.Booking.objects.create(**validated_data)
 
 
 class BookingDetailSerializer(serializers.ModelSerializer):
