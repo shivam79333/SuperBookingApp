@@ -16,23 +16,8 @@ class Migration(migrations.Migration):
             model_name='payment',
             name='payments_user_id_b89769_idx',
         ),
-        migrations.RenameField(
-            model_name='payment',
-            old_name='user_id',
-            new_name='user',
-        ),
-        migrations.RemoveField(
-            model_name='booking',
-            name='user_id',
-        ),
-        migrations.AddField(
-            model_name='booking',
-            name='user',
-            field=models.ForeignKey(default=0, on_delete=django.db.models.deletion.CASCADE, related_name='booking', to='user.user_data'),
-            preserve_default=False,
-        ),
         migrations.AddIndex(
             model_name='payment',
-            index=models.Index(fields=['user', 'status'], name='payments_user_id_1b771c_idx'),
+            index=models.Index(fields=['user_id', 'status'], name='payments_user_id_1b771c_idx'),
         ),
     ]

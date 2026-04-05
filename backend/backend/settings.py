@@ -15,8 +15,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
-import firebase_admin
-from firebase_admin import credentials
+# import firebase_admin
+# from firebase_admin import credentials
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -152,8 +152,8 @@ STATIC_URL = "static/"
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_CREDENTIALS = True
 
-FIREBASE_KEY_PATH = os.path.join(BASE_DIR, "firebase-service-account.json")
+# FIREBASE_KEY_PATH = os.path.join(BASE_DIR, "firebase-service-account.json")
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate(FIREBASE_KEY_PATH)
-    firebase_admin.initialize_app(cred)
+# if not firebase_admin._apps:
+#     cred = credentials.Certificate(FIREBASE_KEY_PATH)
+#     firebase_admin.initialize_app(cred)

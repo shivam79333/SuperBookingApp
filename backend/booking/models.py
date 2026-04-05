@@ -213,7 +213,7 @@ class Payment(models.Model):
         unique=True,
         db_index=True,
     )
-    user = models.ForeignKey(
+    user_id = models.ForeignKey(
         User_Data, on_delete=models.CASCADE, related_name="payments", db_index=True
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=False)
@@ -282,6 +282,6 @@ class Payment(models.Model):
         db_table = "payments"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["user", "status"]),
+            models.Index(fields=["user_id", "status"]),
             models.Index(fields=["created_at"]),
         ]

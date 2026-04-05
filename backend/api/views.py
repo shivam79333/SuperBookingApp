@@ -108,6 +108,23 @@ class CreatePaymentView(APIView):
     def post(self, request):
         serializer = ContentSerializer.CreatePaymentSerializer(data = request.data)
         serializer.is_valid(raise_exception=True)
+        booking = serializer.validated_data["booking_reference"]
+
+        if hasattr(booking, "payment"):
+            payment = booking.payment
+            return Response(
+                {
+                    "payment_reference": payment.payment_reference,
+                    "booking_reference": payment.booking_reference_id,
+                    "amount": int(payment.amount * 100),
+                    "currency": "INR",
+                    "razorpay_order_id": payment.gateway_transaction_id,
+                    "razorpay_key": settings.RAZORPAY_KEY_ID,
+                    "status": payment.status,
+                },
+                status=status.HTTP_200_OK,
+            )
+
         payment = serializer.save()
         amount_ = int(payment.amount * 100) #amt in paise
 
@@ -140,6 +157,23 @@ class CreatePaymentPageView(APIView):
     def post(self, request):
         serializer = ContentSerializer.CreatePaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        booking = serializer.validated_data["booking_reference"]
+
+        if hasattr(booking, "payment"):
+            payment = booking.payment
+            return render(
+                request,
+                "payments/checkout.html",
+                {
+                    "razorpay_key": settings.RAZORPAY_KEY_ID,
+                    "razorpay_order_id": payment.gateway_transaction_id,
+                    "amount": int(payment.amount * 100),
+                    "currency": "INR",
+                    "payment_reference": payment.payment_reference,
+                    "booking_reference": payment.booking_reference_id,
+                },
+            )
+
         payment = serializer.save()
         amount_ = int(payment.amount * 100)
 
@@ -331,9 +365,12 @@ class HomeView(generics.RetrieveAPIView):
     def get(self, request):
         # 1. Continue Booking (for authenticated users)
         if request.user.is_authenticated:
-            user_data = User_Data.objects.get(user=request.user)
+            user_data, _ = User_Data.objects.get_or_create(
+                user=request.user,
+                defaults={"role": "user"},
+            )
             pending_bookings = Booking.objects.filter(
-                user=user_data, status="pending", deleted_at__isnull=True
+                user_id=user_data, status="pending", deleted_at__isnull=True
             ).order_by("-created_at")
             bookings_serializer = ContentSerializer.BookingSerializer(
                 pending_bookings, many=True

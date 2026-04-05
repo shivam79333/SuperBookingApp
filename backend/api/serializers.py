@@ -2,24 +2,10 @@ from rest_framework import serializers
 from content import models as ContentModel
 from booking import models as BookingModel
 from user.models import User_Data
-from django.contrib.auth.models import User as AuthUser
+# from django.contrib.auth.models import User as AuthUser
 from .paginations import StandardResultsSetPagination
 import uuid
 
-from booking.models import Booking
-from .paginations import StandardResultsSetPagination
-from django.contrib.auth.models import User
-from user.models import User_Data
-
-
-class LocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ContentModel.Location
-        fields = [
-            "id",
-            "name",
-            "icon_url",
-        ]
 
 
 class ExperienceSerializer(serializers.ModelSerializer):
@@ -46,33 +32,28 @@ class ExperienceSerializer(serializers.ModelSerializer):
         ]
 
 
-class ExperienceShortSerializer(serializers.ModelSerializer):
-    category = serializers.SerializerMethodField()
-    location = serializers.SerializerMethodField()
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContentModel.Location
+        fields = [
+            "id",
+            "name",
+            "icon_url",
+        ]
 
+
+class ExperienceShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentModel.Experience
         fields = [
             "id",
             "name",
-            "category",
+            "category_id",
             "location",
             "image_url",
             "entry_fee_base",
             "is_open",
         ]
-
-    def get_category(self, obj):
-        category = ContentModel.Category.objects.get(id=obj.category.id)
-        if category is not None:
-            return category.name
-        return None
-
-    def get_location(self, obj):
-        location = ContentModel.Location.objects.get(id=obj.location.id)
-        if location is not None:
-            return location.name
-        return None
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -85,27 +66,30 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_experiences(self, obj):
         experiences = obj.experiences.filter(deleted_at__isnull=True).order_by("id")
 
+        # Get the request from the context
         request = self.context.get("request")
+
+        # If there is a request, paginate the experiences
         if request:
             paginator = StandardResultsSetPagination()
             paginated_experiences = paginator.paginate_queryset(experiences, request)
             serializer = ExperienceShortSerializer(paginated_experiences, many=True)
             return paginator.get_paginated_response(serializer.data).data
 
+        # If there is no request, return the first 10 experiences
         experiences = experiences[:10]
         return ExperienceShortSerializer(experiences, many=True).data
 
 
-class BookingSerializer(serializers.ModelSerializer):
-    experience_name = serializers.CharField(source="experience_id.name", read_only=True)
 
+
+class BookingSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Booking
+        model = BookingModel.Booking
         fields = [
-            "id",
             "booking_reference",
+            "user_id",
             "experience_id",
-            "experience_name",
             "booking_date",
             "slot_time",
             "total_tickets",
@@ -125,7 +109,7 @@ class BookingSerializer(serializers.ModelSerializer):
 
 class BookingCreateSerializer(serializers.ModelSerializer):
     """For POST requests - minimal required fields"""
-    user_id = serializers.PrimaryKeyRelatedField(queryset=AuthUser.objects.all())
+    user_id = serializers.PrimaryKeyRelatedField(queryset=User_Data.objects.all())
 
     class Meta:
         model = BookingModel.Booking
@@ -139,11 +123,11 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             "special_requests",
         ]
 
-    def validate_user_id(self, auth_user):
-        try:
-            return auth_user.user_data
-        except User_Data.DoesNotExist:
-            raise serializers.ValidationError("No profile found for this user.")
+    # def validate_user_id(self, auth_user):
+    #     try:
+    #         return auth_user.user
+    #     except User_Data.DoesNotExist:
+    #         raise serializers.ValidationError("No profile found for this user.")
 
     def create(self, validated_data):
         experience = validated_data["experience_id"]
@@ -190,60 +174,55 @@ class CreatePaymentSerializer(serializers.ModelSerializer):
     def validate_booking_reference(self, booking):
         if booking.status == "cancelled":
             raise serializers.ValidationError("Cannot create payment for cancelled booking.")
-        if hasattr(booking, "payment"):
-            raise serializers.ValidationError("Payment already exists for this booking.")
         return booking
 
     def create(self, validated_data):
         booking = validated_data["booking_reference"]
-        return BookingModel.Payment.objects.create(
-            payment_reference=f"PAY-{uuid.uuid4().hex[:14].upper()}",
+        payment, created = BookingModel.Payment.objects.get_or_create(
             booking_reference=booking,
-            user_id=booking.user_id,
-            amount=booking.total_amount,
-            status="pending",
-            **{k: v for k, v in validated_data.items() if k != "booking_reference"},
+            defaults={
+                "payment_reference": f"PAY-{uuid.uuid4().hex[:14].upper()}",
+                "user_id": booking.user_id,
+                "amount": booking.total_amount,
+                "status": "pending",
+                **{k: v for k, v in validated_data.items() if k != "booking_reference"},
+            },
         )
-            "special_requests",
-            "created_at",
-            "updated_at",
-        ]
+        return payment
 
 
 class UserDataRegisterSerializer(serializers.ModelSerializer):
     username = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True)
-    email = serializers.EmailField(write_only=True, required=False)
-    first_name = serializers.CharField(write_only=True, required=False)
+    email = serializers.EmailField(write_only=True, required=False, default="")
+    first_name = serializers.CharField(write_only=True, required=False, default="")
+    last_name = serializers.CharField(write_only=True, required=False, default="")
 
     class Meta:
         model = User_Data
-        fields = (
-            "username",
-            "password",
-            "email",
-            "first_name",
-            "mobile",
-            "preferred_notification",
-        )
+        fields = ["username", "password", "email", "first_name", "last_name", "mobile", "role"]
 
     def create(self, validated_data):
+        from django.contrib.auth.models import User as AuthUser
         username = validated_data.pop("username")
         password = validated_data.pop("password")
         email = validated_data.pop("email", "")
         first_name = validated_data.pop("first_name", "")
+        last_name = validated_data.pop("last_name", "")
 
-        user = User.objects.create_user(
+        auth_user = AuthUser.objects.create_user(
             username=username,
-            email=email,
             password=password,
+            email=email,
             first_name=first_name,
+            last_name=last_name,
         )
-        user_data, created = User_Data.objects.get_or_create(
-            user=user, defaults={"role": "user"}
+        # get_or_create handles the signal that may have already created User_Data
+        profile, _ = User_Data.objects.get_or_create(
+            user=auth_user,
+            defaults=validated_data,
         )
         for attr, value in validated_data.items():
-            setattr(user_data, attr, value)
-        user_data.save()
-
-        return user_data
+            setattr(profile, attr, value)
+        profile.save()
+        return profile
