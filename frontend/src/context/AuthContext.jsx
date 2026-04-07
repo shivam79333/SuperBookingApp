@@ -7,28 +7,34 @@ export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const checkUserStatus = useCallback(() => {
-    // Try to fetch authenticated user data
-    // If httponly cookie exists and is valid, request will succeed
-    // Browser automatically sends httponly cookie due to withCredentials: true
-    api
-      .get("/auth/me/")
-      .then((response) => {
-        const userData = response.data;
-        setUser(userData);
-        setToken(userData.id); // Store something meaningful
-        // console.log("User authenticated:", userData);
-        setLoading(false);
-      })
-      .catch((error) => {
-        // console.log("User not authenticated:", error.response?.status);
-        setUser(null);
-        setToken(null);
-        setLoading(false);
-      });
+  const checkUserStatus = useCallback(async () => {
+    try {
+      const response = await api.get("/auth/me/");
+      console.log(response.data);
+      setUser(response.data);
+      // console.log("User authenticated:", userData);
+      setLoading(false);
+    } catch (error) {
+      console.log(error.response?.data?.detail);
+      // console.log("User not authenticated:", error.response?.status);
+      setUser(null);
+      setLoading(false);
+    }
+    // .then((response) => {
+    //   const userData = response.data;
+    //   setUser(userData);
+    //   setToken(userData.id); // Store something meaningful
+    //   // console.log("User authenticated:", userData);
+    //   setLoading(false);
+    // })
+    // .catch((error) => {
+    //   // console.log("User not authenticated:", error.response?.status);
+    //   setUser(null);
+    //   setToken(null);
+    //   setLoading(false);
+    // });
   }, []);
 
   useEffect(() => {
@@ -48,12 +54,12 @@ export const AuthProvider = ({ children }) => {
         checkUserStatus();
       }
     } catch (error) {
-      console.error(
-        "[Auth] Login error:",
-        error.response?.status,
-        error.message,
-      );
-      throw error;
+      // console.error(
+      //   "[Auth] Login error:",
+      //   error.response?.status,
+      //   error.message,
+      // );
+      console.log(error.response?.data?.detail);
     }
   };
 
@@ -74,12 +80,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     await api.post("/auth/logout/");
     setUser(null);
-    setToken(null);
   };
 
   const contextData = {
     user,
-    token,
     login,
     loginWithFirebaseToken,
     logout,

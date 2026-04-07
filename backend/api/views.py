@@ -74,19 +74,31 @@ class LocationListView(generics.ListAPIView):
         return ContentModel.Location.objects.all()
 
 
-class LocationView(generics.ListAPIView):
+class LocationView(generics.RetrieveAPIView):
     serializer_class = ContentSerializer.LocationSerializer
     permission_classes = [AllowAny]
     lookup_field = "id"
 
     def get_queryset(self):
         return ContentModel.Location.objects.filter(id=self.kwargs["id"])
-      
+
+
+class BookingView(generics.RetrieveAPIView):
+    serializer_class = ContentSerializer.BookingDetailSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "booking_reference"
+
+    def get_queryset(self):
+        return BookingModel.Booking.objects.filter(
+            booking_reference=self.kwargs["booking_reference"]
+        )
+
 
 class CreateBookingView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        serializer_class = ContentSerializer.BookingCreateSerializer(data = request.data)
+        serializer_class = ContentSerializer.BookingCreateSerializer(data=request.data)
 
         if serializer_class.is_valid():
             booking = serializer_class.save() #user_id = request.user_id, this creates the instance, as serialiser class had it already
@@ -95,18 +107,18 @@ class CreateBookingView(APIView):
                 {
                     "message": "Booking created successfully",
                     "booking_reference": booking.booking_reference,
-                    "data" : response_serialser.data
+                    "data": response_serialser.data,
                 },
-                status = status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
-        return Response(serializer_class.errors, status = status.HTTP_400_BAD_REQUEST)
-    
+        return Response(serializer_class.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CreatePaymentView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = ContentSerializer.CreatePaymentSerializer(data = request.data)
+        serializer = ContentSerializer.CreatePaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         booking = serializer.validated_data["booking_reference"]
 
@@ -126,17 +138,17 @@ class CreatePaymentView(APIView):
             )
 
         payment = serializer.save()
-        amount_ = int(payment.amount * 100) #amt in paise
+        amount_ = int(payment.amount * 100)  # amt in paise
 
         order_data = {
             "amount": amount_,
             "currency": "INR",
-            "receipt": str(payment.booking_reference_id)
+            "receipt": str(payment.booking_reference_id),
         }
 
-        razorpay_order = client.order.create(data = order_data)
-        payment.gateway_transaction_id = razorpay_order["id"] #razor pay order id
-        payment.save(update_fields = ["gateway_transaction_id", "updated_at"])
+        razorpay_order = client.order.create(data=order_data)
+        payment.gateway_transaction_id = razorpay_order["id"]  # razor pay order id
+        payment.save(update_fields=["gateway_transaction_id", "updated_at"])
         return Response(
             {
                 "payment_reference": payment.payment_reference,
@@ -211,8 +223,17 @@ class VerifyPaymentView(APIView):
         razorpay_payment_id = request.data.get("razorpay_payment_id")
         razorpay_signature = request.data.get("razorpay_signature")
 
-        if not all([payment_reference, razorpay_order_id, razorpay_payment_id, razorpay_signature]):
-            return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+        if not all(
+            [
+                payment_reference,
+                razorpay_order_id,
+                razorpay_payment_id,
+                razorpay_signature,
+            ]
+        ):
+            return Response(
+                {"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             payment = BookingModel.Payment.objects.get(
@@ -220,7 +241,9 @@ class VerifyPaymentView(APIView):
                 gateway_transaction_id=razorpay_order_id,
             )
         except BookingModel.Payment.DoesNotExist:
-            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         try:
             client.utility.verify_payment_signature(
@@ -244,7 +267,9 @@ class VerifyPaymentView(APIView):
             payment.status = "failed"
             payment.error_message = "Signature verification failed"
             payment.save(update_fields=["status", "error_message", "updated_at"])
-            return Response({"error": "Verification failed"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Verification failed"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # webhook if we have keep on checking on wheter the payment successful or not, db will be updated even if frontend call misses verify
@@ -258,7 +283,9 @@ class RazorpayWebhookView(APIView):
         body = request.body.decode("utf-8")
 
         if not signature:
-            return Response({"error": "Missing signature"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Missing signature"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             client.utility.verify_webhook_signature(
@@ -267,7 +294,9 @@ class RazorpayWebhookView(APIView):
                 secret=settings.RAZORPAY_WEBHOOK_SECRET,
             )
         except Exception:
-            return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         payload = json.loads(body)
         event = payload.get("event")
@@ -277,9 +306,9 @@ class RazorpayWebhookView(APIView):
                 payment_entity = payload["payload"]["payment"]["entity"]
                 order_id = payment_entity.get("order_id")
 
-                payment = BookingModel.Payment.objects.select_related("booking_reference").get(
-                    gateway_transaction_id=order_id
-                )
+                payment = BookingModel.Payment.objects.select_related(
+                    "booking_reference"
+                ).get(gateway_transaction_id=order_id)
 
                 if payment.status != "success":
                     payment.status = "success"
@@ -300,7 +329,9 @@ class RazorpayWebhookView(APIView):
                     or "Payment failed"
                 )
 
-                payment = BookingModel.Payment.objects.get(gateway_transaction_id=order_id)
+                payment = BookingModel.Payment.objects.get(
+                    gateway_transaction_id=order_id
+                )
                 payment.status = "failed"
                 payment.error_message = error_desc
                 payment.save(update_fields=["status", "error_message", "updated_at"])
@@ -309,8 +340,9 @@ class RazorpayWebhookView(APIView):
             return Response({"message": "Webhook processed"}, status=status.HTTP_200_OK)
 
         except BookingModel.Payment.DoesNotExist:
-            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
-
+            return Response(
+                {"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class HomeView(generics.RetrieveAPIView):

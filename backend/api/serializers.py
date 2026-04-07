@@ -104,7 +104,12 @@ class BookingSerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
         ]
-        read_only_fields = ["booking_reference", "created_at", "updated_at", "cancelled_at"]
+        read_only_fields = [
+            "booking_reference",
+            "created_at",
+            "updated_at",
+            "cancelled_at",
+        ]
 
 
 class BookingCreateSerializer(serializers.ModelSerializer):
@@ -138,6 +143,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
 class BookingDetailSerializer(serializers.ModelSerializer):
     """For GET requests - includes related object details"""
+
     user = serializers.StringRelatedField(source="user_id", read_only=True)
     experience = ExperienceShortSerializer(source="experience_id", read_only=True)
 
@@ -155,13 +161,14 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             "refund_status",
             "special_requests",
             "created_at",
+            "updated_at",
         ]
 
 
 class CreatePaymentSerializer(serializers.ModelSerializer):
     booking_reference = serializers.PrimaryKeyRelatedField(
         queryset=BookingModel.Booking.objects.all()
-    ) #get all the booking_refences
+    )  # get all the booking_refences
 
     class Meta:
         model = BookingModel.Payment
