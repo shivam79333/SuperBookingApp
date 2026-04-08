@@ -6,6 +6,7 @@ from user.models import User_Data
 from content.models import Experience
 import uuid
 
+
 class Booking(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -21,13 +22,12 @@ class Booking(models.Model):
         ("failed", "Failed"),
     ]
 
-    booking_reference = models.CharField(
-        max_length=50, unique=True, db_index=True, null=False, primary_key= True
-    )
-    user_id = models.ForeignKey(
+    id = models.BigAutoField(primary_key=True)
+    reference = models.CharField(max_length=50, unique=True, db_index=True, null=False)
+    user = models.ForeignKey(
         User_Data, on_delete=models.CASCADE, related_name="bookings", db_index=True
     )
-    experience_id = models.ForeignKey(
+    experience = models.ForeignKey(
         Experience,
         on_delete=models.CASCADE,
         related_name="experience",
@@ -66,21 +66,28 @@ class Booking(models.Model):
 
     def is_cancelled(self):
         return self.status == "cancelled"
-    
+
     def save(self, *args, **kwargs):
-        if not self.booking_reference:
-            self.booking_reference = f"BK-{uuid.uuid4().hex[:12].upper()}"
+        if not self.reference:
+            while True:
+                ref = f"BK-{uuid.uuid4().hex[:12].upper()}"
+                if not Booking.objects.filter(reference=ref).exists():
+                    self.reference = ref
+                    break
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Booking {self.booking_reference} - {self.status}"
+        return f"{self.reference} - {self.status}"
 
     class Meta:
         db_table = "bookings"
         ordering = ["-booking_date"]
-        # Add composite index
         indexes = [
-            models.Index(fields=["experience_id", "booking_date", "status"]),
+            models.Index(fields=["reference"], name="idx_booking_reference"),
+            models.Index(
+                fields=["experience", "booking_date", "status"],
+                name="idx_booking_exp_date_status",
+            ),
         ]
 
 
@@ -91,10 +98,10 @@ class Ticket(models.Model):
         ("senior", "Senior"),
     ]
 
-    booking_id = models.ForeignKey(
+    id = models.BigAutoField(primary_key=True)
+    booking = models.ForeignKey(
         Booking,
         on_delete=models.CASCADE,
-        to_field="booking_reference",
         related_name="tickets",
         db_index=True,
         help_text="Booking this ticket belongs to",
@@ -198,22 +205,16 @@ class Payment(models.Model):
         ("paypal", "PayPal"),
     ]
 
-    payment_reference = models.CharField(
-        max_length=100,
-        unique=True,
-        db_index=True,
-        null=False,
-        help_text="Transaction ID from payment gateway",
-    )
-    booking_reference = models.OneToOneField(
+    id = models.BigAutoField(primary_key=True)
+    reference = models.CharField(max_length=100, unique=True, db_index=True, null=False)
+    booking = models.OneToOneField(
         Booking,
         on_delete=models.CASCADE,
-        to_field="booking_reference",
         related_name="payment",
         unique=True,
         db_index=True,
     )
-    user_id = models.ForeignKey(
+    user = models.ForeignKey(
         User_Data, on_delete=models.CASCADE, related_name="payments", db_index=True
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=False)
@@ -276,12 +277,22 @@ class Payment(models.Model):
         return self.status == "refunded"
 
     def __str__(self):
-        return f"Payment {self.payment_reference} - {self.status}"
+        return f"{self.reference} - {self.status}"
 
     class Meta:
         db_table = "payments"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["user_id", "status"]),
-            models.Index(fields=["created_at"]),
+            models.Index(fields=["reference"], name="idx_payments_reference"),
+            models.Index(fields=["user", "status"], name="idx_payments_user_status"),
+            models.Index(fields=["created_at"], name="idx_payments_created_at"),
         ]
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            while True:
+                ref = f"PAY-{uuid.uuid4().hex[:12].upper()}"
+                if not Payment.objects.filter(reference=ref).exists():
+                    self.reference = ref
+                    break
+        super().save(*args, **kwargs)

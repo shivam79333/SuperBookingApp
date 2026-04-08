@@ -13,12 +13,11 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         file_path = kwargs["csv_file"]
 
-        # 🔥 Preload all foreign key tables
         categories = {c.name.strip().lower(): c for c in Category.objects.all()}
 
         locations = {l.name.strip().lower(): l for l in Location.objects.all()}
 
-        places_to_create = []
+        created_count = 0
 
         with open(file_path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
@@ -27,7 +26,6 @@ class Command(BaseCommand):
 
             for row in reader:
                 try:
-                    # ✅ CATEGORY lookup / create
                     cat_name = row["CATEGORY"].strip()
                     cat_key = cat_name.lower()
                     # self.stdout.write(self.style.SUCCESS(f"{cat_name}"))
@@ -37,7 +35,6 @@ class Command(BaseCommand):
                         category = Category.objects.create(name=cat_name)
                         categories[cat_name] = category
 
-                    # ✅ LOCATION lookup / create
                     loc_name = row["LOCATION"].strip()
                     loc_key = loc_name.lower()
 
@@ -46,10 +43,8 @@ class Command(BaseCommand):
                         location = Location.objects.create(name=loc_name)
                         locations[loc_key] = location
 
-                    # ✅ Boolean
                     is_open = row["IS_OPEN"].strip().lower() in ["TRUE", "1", "yes"]
 
-                    # ✅ Time parsing
                     opening_time = datetime.strptime(
                         row["OPENING_TIME"], "%H:%M:%S"
                     ).time()
@@ -73,20 +68,18 @@ class Command(BaseCommand):
                         opening_time=opening_time,
                         closing_time=closing_time,
                         last_entry_time=last_entry_time,
-                        category_id=category,  # 🔑 FK
+                        category=category,  # 🔑 FK
                         deleted_at=None,
                     )
 
-                    places_to_create.append(place)
+                    place.save()
+                    created_count += 1
 
                 except Exception as e:
                     self.stdout.write(
                         self.style.WARNING(f"Skipping row: {row} | Error: {e}")
                     )
 
-        # 🚀 Bulk insert
-        Experience.objects.bulk_create(places_to_create)
-
         self.stdout.write(
-            self.style.SUCCESS(f"Imported {len(places_to_create)} places successfully!")
+            self.style.SUCCESS(f"Imported {created_count} places successfully!")
         )

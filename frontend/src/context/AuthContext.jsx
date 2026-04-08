@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const checkUserStatus = useCallback(async () => {
     try {
       const response = await api.get("/auth/me/");
-      console.log(response.data);
+      // console.log(response.data);
       setUser(response.data);
       // console.log("User authenticated:", userData);
       setLoading(false);

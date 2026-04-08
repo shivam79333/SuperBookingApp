@@ -10,20 +10,18 @@ from rest_framework.reverse import reverse
 from django.contrib.auth.models import User
 from user.models import User_Data
 from booking.models import Booking
-import razorpay
 from django.conf import settings
 from django.shortcuts import render
 import datetime
 from django.utils import timezone
 import json
-
+import razorpay
 from . import serializers as ContentSerializer
 from .serializers import UserDataRegisterSerializer
 from .paginations import StandardResultsSetPagination
 from content import models as ContentModel
 from booking import models as BookingModel
-
-client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+from .razorpay_client import client
 
 
 class CategoryView(generics.RetrieveAPIView):
@@ -38,10 +36,12 @@ class CategoryView(generics.RetrieveAPIView):
 class ExperienceView(generics.RetrieveAPIView):
     serializer_class = ContentSerializer.ExperienceSerializer
     permission_classes = [AllowAny]
-    lookup_field = "id"
+    lookup_field = "public_id"
 
     def get_queryset(self):
-        return ContentModel.Experience.objects.filter(id=self.kwargs["id"])
+        return ContentModel.Experience.objects.filter(
+            public_id=self.kwargs["public_id"]
+        )
 
 
 class ExperienceListView(generics.ListAPIView):
@@ -77,37 +77,37 @@ class LocationListView(generics.ListAPIView):
 class LocationView(generics.RetrieveAPIView):
     serializer_class = ContentSerializer.LocationSerializer
     permission_classes = [AllowAny]
-    lookup_field = "id"
+    lookup_field = "public_id"
 
     def get_queryset(self):
-        return ContentModel.Location.objects.filter(id=self.kwargs["id"])
+        return ContentModel.Location.objects.filter(public_id=self.kwargs["public_id"])
 
 
 class BookingView(generics.RetrieveAPIView):
     serializer_class = ContentSerializer.BookingDetailSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = "booking_reference"
+    lookup_field = "reference"
 
     def get_queryset(self):
-        return BookingModel.Booking.objects.filter(
-            booking_reference=self.kwargs["booking_reference"]
-        )
+        return BookingModel.Booking.objects.filter(reference=self.kwargs["reference"])
 
 
 class CreateBookingView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer_class = ContentSerializer.BookingCreateSerializer(data=request.data)
+        serializer_class = ContentSerializer.BookingCreateSerializer(
+            data=request.data, context={"request": request}
+        )
 
         if serializer_class.is_valid():
-            booking = serializer_class.save() #user_id = request.user_id, this creates the instance, as serialiser class had it already
-            response_serialser = ContentSerializer.BookingDetailSerializer(booking)
+            booking = serializer_class.save()
+            response_serializer = ContentSerializer.BookingDetailSerializer(booking)
             return Response(
                 {
                     "message": "Booking created successfully",
-                    "booking_reference": booking.booking_reference,
-                    "data": response_serialser.data,
+                    "booking_reference": booking.reference,
+                    "data": response_serializer.data,
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -115,44 +115,30 @@ class CreateBookingView(APIView):
 
 
 class CreatePaymentView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = ContentSerializer.CreatePaymentSerializer(data=request.data)
+        serializer = ContentSerializer.CreatePaymentSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
-        booking = serializer.validated_data["booking_reference"]
-
-        if hasattr(booking, "payment"):
-            payment = booking.payment
-            return Response(
-                {
-                    "payment_reference": payment.payment_reference,
-                    "booking_reference": payment.booking_reference_id,
-                    "amount": int(payment.amount * 100),
-                    "currency": "INR",
-                    "razorpay_order_id": payment.gateway_transaction_id,
-                    "razorpay_key": settings.RAZORPAY_KEY_ID,
-                    "status": payment.status,
-                },
-                status=status.HTTP_200_OK,
-            )
 
         payment = serializer.save()
-        amount_ = int(payment.amount * 100)  # amt in paise
+        amount_ = int(payment.amount * 100)
 
         order_data = {
             "amount": amount_,
             "currency": "INR",
-            "receipt": str(payment.booking_reference_id),
+            "receipt": str(payment.booking),
         }
 
         razorpay_order = client.order.create(data=order_data)
-        payment.gateway_transaction_id = razorpay_order["id"]  # razor pay order id
+        payment.gateway_transaction_id = razorpay_order["id"]
         payment.save(update_fields=["gateway_transaction_id", "updated_at"])
         return Response(
             {
-                "payment_reference": payment.payment_reference,
-                "booking_reference": payment.booking_reference_id,
+                "payment_reference": payment.reference,
+                "booking_reference": payment.booking.reference,
                 "amount": amount_,
                 "currency": "INR",
                 "razorpay_order_id": razorpay_order["id"],
@@ -164,12 +150,12 @@ class CreatePaymentView(APIView):
 
 
 class CreatePaymentPageView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = ContentSerializer.CreatePaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        booking = serializer.validated_data["booking_reference"]
+        booking = serializer.validated_data["booking"]
 
         if hasattr(booking, "payment"):
             payment = booking.payment
@@ -181,8 +167,8 @@ class CreatePaymentPageView(APIView):
                     "razorpay_order_id": payment.gateway_transaction_id,
                     "amount": int(payment.amount * 100),
                     "currency": "INR",
-                    "payment_reference": payment.payment_reference,
-                    "booking_reference": payment.booking_reference_id,
+                    "payment_reference": payment.reference,
+                    "booking_reference": booking.reference,
                 },
             )
 
@@ -193,7 +179,7 @@ class CreatePaymentPageView(APIView):
             data={
                 "amount": amount_,
                 "currency": "INR",
-                "receipt": str(payment.booking_reference_id),
+                "receipt": str(payment.booking),
             }
         )
 
@@ -208,24 +194,24 @@ class CreatePaymentPageView(APIView):
                 "razorpay_order_id": razorpay_order["id"],
                 "amount": amount_,
                 "currency": "INR",
-                "payment_reference": payment.payment_reference,
-                "booking_reference": payment.booking_reference_id,
+                "payment_reference": payment.id,
+                "booking_reference": booking.id,
             },
         )
 
 
 class VerifyPaymentView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        payment_reference = request.data.get("payment_reference")
+        payment = request.data.get("payment")
         razorpay_order_id = request.data.get("razorpay_order_id")
         razorpay_payment_id = request.data.get("razorpay_payment_id")
         razorpay_signature = request.data.get("razorpay_signature")
 
         if not all(
             [
-                payment_reference,
+                payment,
                 razorpay_order_id,
                 razorpay_payment_id,
                 razorpay_signature,
@@ -237,8 +223,7 @@ class VerifyPaymentView(APIView):
 
         try:
             payment = BookingModel.Payment.objects.get(
-                payment_reference=payment_reference,
-                gateway_transaction_id=razorpay_order_id,
+                reference=payment, gateway_transaction_id=razorpay_order_id
             )
         except BookingModel.Payment.DoesNotExist:
             return Response(
@@ -246,24 +231,27 @@ class VerifyPaymentView(APIView):
             )
 
         try:
-            client.utility.verify_payment_signature(
-                {
-                    "razorpay_order_id": razorpay_order_id,
-                    "razorpay_payment_id": razorpay_payment_id,
-                    "razorpay_signature": razorpay_signature,
-                }
-            )
-            payment.status = "success"
+            if settings.DEBUG:
+                payment.status = "success"
+            else:
+                client.utility.verify_payment_signature(
+                    {
+                        "razorpay_order_id": razorpay_order_id,
+                        "razorpay_payment_id": razorpay_payment_id,
+                        "razorpay_signature": razorpay_signature,
+                    }
+                )
+                payment.status = "success"
             payment.paid_at = timezone.now()
             payment.save(update_fields=["status", "paid_at", "updated_at"])
 
-            booking = payment.booking_reference
+            booking = payment.booking
             booking.status = "confirmed"
             booking.save(update_fields=["status", "updated_at"])
 
             return Response({"message": "Payment verified"}, status=status.HTTP_200_OK)
 
-        except Exception:
+        except razorpay.errors.SignatureVerificationError:
             payment.status = "failed"
             payment.error_message = "Signature verification failed"
             payment.save(update_fields=["status", "error_message", "updated_at"])
@@ -293,7 +281,7 @@ class RazorpayWebhookView(APIView):
                 signature=signature,
                 secret=settings.RAZORPAY_WEBHOOK_SECRET,
             )
-        except Exception:
+        except razorpay.errors.SignatureVerificationError:
             return Response(
                 {"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -359,9 +347,7 @@ class HomeView(generics.RetrieveAPIView):
         )
         try:
             category = ContentModel.Category.objects.get(name=category_name)
-            experiences = category.experiences.filter(deleted_at__isnull=True).order_by(
-                "id"
-            )
+            experiences = category.experiences.filter(deleted_at__isnull=True)
 
             paginated_experiences = paginator.paginate_queryset(
                 experiences, request, view=self
@@ -449,7 +435,7 @@ class HomeView(generics.RetrieveAPIView):
             "explore_locations": {
                 "label": "Explore Locations",
                 "data": locations_serializer.data,
-                "link": reverse("location", request=request),
+                "link": reverse("location_list", request=request),
             },
             "featured_categories": featured_categories_data,
             "all_categories": categories_data,

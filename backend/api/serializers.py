@@ -2,20 +2,23 @@ from rest_framework import serializers
 from content import models as ContentModel
 from booking import models as BookingModel
 from user.models import User_Data
+
 # from django.contrib.auth.models import User as AuthUser
 from .paginations import StandardResultsSetPagination
 import uuid
 
 
-
 class ExperienceSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+
     class Meta:
         model = ContentModel.Experience
         fields = [
-            "id",
+            "public_id",
             "name",
             "description",
-            "category_id",
+            "category",
             "location",
             "latitude",
             "longitude",
@@ -31,29 +34,44 @@ class ExperienceSerializer(serializers.ModelSerializer):
             "deleted_at",
         ]
 
+    def get_category(self, obj):
+        return obj.category.name
+
+    def get_location(self, obj):
+        return obj.location.name
+
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentModel.Location
         fields = [
-            "id",
+            "public_id",
             "name",
             "icon_url",
         ]
 
 
 class ExperienceShortSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+
     class Meta:
         model = ContentModel.Experience
         fields = [
-            "id",
+            "public_id",
             "name",
-            "category_id",
+            "category",
             "location",
             "image_url",
             "entry_fee_base",
             "is_open",
         ]
+
+    def get_category(self, obj):
+        return obj.category.name
+
+    def get_location(self, obj):
+        return obj.location.name
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -81,13 +99,11 @@ class CategorySerializer(serializers.ModelSerializer):
         return ExperienceShortSerializer(experiences, many=True).data
 
 
-
-
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingModel.Booking
         fields = [
-            "booking_reference",
+            "reference",
             "user_id",
             "experience_id",
             "booking_date",
@@ -105,7 +121,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "deleted_at",
         ]
         read_only_fields = [
-            "booking_reference",
+            "reference",
             "created_at",
             "updated_at",
             "cancelled_at",
@@ -114,29 +130,35 @@ class BookingSerializer(serializers.ModelSerializer):
 
 class BookingCreateSerializer(serializers.ModelSerializer):
     """For POST requests - minimal required fields"""
-    user_id = serializers.PrimaryKeyRelatedField(queryset=User_Data.objects.all())
+
+    experience = serializers.SlugRelatedField(
+        slug_field="public_id", queryset=ContentModel.Experience.objects.all()
+    )
 
     class Meta:
         model = BookingModel.Booking
         fields = [
-            "user_id",
-            "experience_id",
+            "experience",
             "booking_date",
             "slot_time",
             "total_tickets",
-            # "total_amount",
             "special_requests",
         ]
 
-    # def validate_user_id(self, auth_user):
-    #     try:
-    #         return auth_user.user
-    #     except User_Data.DoesNotExist:
-    #         raise serializers.ValidationError("No profile found for this user.")
-
     def create(self, validated_data):
-        experience = validated_data["experience_id"]
+        request = self.context.get("request")
+        experience = validated_data["experience"]
         tickets = validated_data["total_tickets"]
+        user = request.user
+
+        try:
+            user_data = User_Data.objects.get(user=user)
+        except User_Data.DoesNotExist:
+            raise serializers.ValidationError(
+                "User profile not found. Please complete your profile setup."
+            )
+
+        validated_data["user"] = user_data
         validated_data["total_amount"] = experience.entry_fee_base * tickets
         return BookingModel.Booking.objects.create(**validated_data)
 
@@ -144,13 +166,13 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 class BookingDetailSerializer(serializers.ModelSerializer):
     """For GET requests - includes related object details"""
 
-    user = serializers.StringRelatedField(source="user_id", read_only=True)
-    experience = ExperienceShortSerializer(source="experience_id", read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+    experience = ExperienceShortSerializer(read_only=True)
 
     class Meta:
         model = BookingModel.Booking
         fields = [
-            "booking_reference",
+            "reference",
             "user",
             "experience",
             "booking_date",
@@ -166,36 +188,43 @@ class BookingDetailSerializer(serializers.ModelSerializer):
 
 
 class CreatePaymentSerializer(serializers.ModelSerializer):
-    booking_reference = serializers.PrimaryKeyRelatedField(
-        queryset=BookingModel.Booking.objects.all()
-    )  # get all the booking_refences
+    booking = serializers.SlugRelatedField(
+        slug_field="reference", queryset=BookingModel.Booking.objects.all()
+    )
 
     class Meta:
         model = BookingModel.Payment
         fields = [
-            "booking_reference",
+            "booking",
             "payment_method",
             "payment_gateway",
         ]
 
-    def validate_booking_reference(self, booking):
+    def validate_booking(self, booking):
+
         if booking.status == "cancelled":
-            raise serializers.ValidationError("Cannot create payment for cancelled booking.")
+            raise serializers.ValidationError(
+                "Cannot create payment for cancelled booking."
+            )
         return booking
 
     def create(self, validated_data):
-        booking = validated_data["booking_reference"]
-        payment, created = BookingModel.Payment.objects.get_or_create(
-            booking_reference=booking,
-            defaults={
-                "payment_reference": f"PAY-{uuid.uuid4().hex[:14].upper()}",
-                "user_id": booking.user_id,
-                "amount": booking.total_amount,
-                "status": "pending",
-                **{k: v for k, v in validated_data.items() if k != "booking_reference"},
-            },
-        )
-        return payment
+        request = self.context.get("request")
+        booking = validated_data["booking"]
+        user = request.user
+
+        try:
+            user_data = User_Data.objects.get(user=user)
+        except User_Data.DoesNotExist:
+            raise serializers.ValidationError(
+                "User profile not found. Please complete your profile setup."
+            )
+
+        validated_data["user"] = user_data
+        validated_data["amount"] = booking.total_amount
+        validated_data["status"] = "pending"
+
+        return BookingModel.Payment.objects.create(**validated_data)
 
 
 class UserDataRegisterSerializer(serializers.ModelSerializer):
@@ -207,10 +236,19 @@ class UserDataRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User_Data
-        fields = ["username", "password", "email", "first_name", "last_name", "mobile", "role"]
+        fields = [
+            "username",
+            "password",
+            "email",
+            "first_name",
+            "last_name",
+            "mobile",
+            "role",
+        ]
 
     def create(self, validated_data):
         from django.contrib.auth.models import User as AuthUser
+
         username = validated_data.pop("username")
         password = validated_data.pop("password")
         email = validated_data.pop("email", "")

@@ -1,10 +1,18 @@
+import secrets
+import string
 from django.utils import timezone
 from django.db import models
 from django.core.validators import MinValueValidator
 
 
+def generate_random_id(length=10):
+    characters = string.ascii_letters + string.digits
+    return "".join(secrets.choice(characters) for i in range(length))
+
+
 class Location(models.Model):
     id = models.BigAutoField(primary_key=True)
+    public_id = models.CharField(max_length=10, unique=True, blank=True, editable=False)
     name = models.CharField(
         max_length=100, unique=True, help_text="e.g. temple, fort, museum"
     )
@@ -12,9 +20,22 @@ class Location(models.Model):
 
     class Meta:
         db_table = "location"
+        indexes = [
+            models.Index(fields=["public_id"], name="idx_locations_public_id"),
+            models.Index(fields=["name"], name="idx_locations_name"),
+        ]
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.public_id}"
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            while True:
+                random_id = generate_random_id(length=8)
+                if not Location.objects.filter(public_id=f"l-{random_id}").exists():
+                    self.public_id = f"l-{random_id}"
+                    break
+        super().save(*args, **kwargs)
 
 
 class Category(models.Model):
@@ -37,11 +58,12 @@ class Category(models.Model):
         ]
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
 
 
 class Experience(models.Model):
     id = models.BigAutoField(primary_key=True)
+    public_id = models.CharField(max_length=10, unique=True, blank=True, editable=False)
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -78,16 +100,17 @@ class Experience(models.Model):
     class Meta:
         db_table = "experience"
         indexes = [
-            models.Index(fields=["category_id"], name="idx_experience_category_id"),
+            models.Index(fields=["public_id"], name="idx_experience_public_id"),
+            models.Index(fields=["category"], name="idx_experience_category"),
             models.Index(fields=["name"], name="idx_experience_name"),
             models.Index(
-                fields=["category_id", "is_open"],
+                fields=["category", "is_open"],
                 name="idx_category_is_open",
             ),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.category_id})"
+        return f"{self.name} ({self.category_id}) - {self.public_id}"
 
     def soft_delete(self):
         """Mark the record as deleted without removing it from the DB."""
@@ -102,6 +125,15 @@ class Experience(models.Model):
     @property
     def is_deleted(self):
         return self.deleted_at is not None
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            while True:
+                random_id = generate_random_id()
+                if not Experience.objects.filter(public_id=f"e-{random_id}").exists():
+                    self.public_id = f"e-{random_id}"
+                    break
+        super().save(*args, **kwargs)
 
 
 class PricingRule(models.Model):
