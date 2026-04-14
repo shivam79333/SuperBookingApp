@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 function ExperienceCard({ experience }) {
-  const experienceId = experience.public_id || experience.id;
+  const experienceId = experience.public_id;
   const images = String(experience.image_url || "")
     .split(",")
     .map((url) => url.trim())
