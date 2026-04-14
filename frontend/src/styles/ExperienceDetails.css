@@ -32,7 +32,7 @@
 
 .experience-image-main {
   width: 100%;
-  height: clamp(220px, 40vw, 520px);
+  height: min(50vh, clamp(230px, 33vw, 460px));
   object-fit: contain;
   background: transparent;
   display: block;
@@ -322,7 +322,7 @@
 
 @media (max-width: 640px) {
   .experience-image-main {
-    height: clamp(190px, 55vw, 260px);
+    height: min(38vh, clamp(185px, 52vw, 240px));
   }
 
   .carousel-arrow {
