@@ -175,7 +175,7 @@ export default function LoginSignup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all"
+                className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-[var(--md-sys-color-tertiary-src)] to-[var(--md-sys-color-primary-src)] hover:from-[var(--md-sys-color-tertiary-src)] hover:to-[var(--md-sys-color-tertiary-src)] transition-all"
               >
                 {loading ? "Processing..." : isLogin ? "Log In" : "Sign Up"}
               </button>
