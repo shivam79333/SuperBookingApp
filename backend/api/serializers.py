@@ -268,10 +268,32 @@ class CreatePaymentSerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     qr_image = serializers.SerializerMethodField()
+    booking_reference = serializers.CharField(source="booking.reference", read_only=True)
+    booking_date = serializers.DateField(source="booking.booking_date", read_only=True)
+    slot_time = serializers.TimeField(source="booking.slot_time", read_only=True)
+    total_tickets = serializers.IntegerField(source="booking.total_tickets", read_only=True)
+    total_amount = serializers.DecimalField(
+        source="booking.total_amount", max_digits=10, decimal_places=2, read_only=True
+    )
+    status = serializers.CharField(source="booking.status", read_only=True)
+    experience_name = serializers.CharField(
+        source="booking.experience.name", read_only=True
+    )
 
     class Meta:
         model = BookingModel.Ticket
-        fields = ["qr_code", "qr_image"]
+        fields = [
+            "id",
+            "qr_code",
+            "qr_image",
+            "booking_reference",
+            "booking_date",
+            "slot_time",
+            "total_tickets",
+            "total_amount",
+            "status",
+            "experience_name",
+        ]
 
     def get_qr_image(self, obj):
         return obj.get_qr_code_image_base64()

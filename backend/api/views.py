@@ -439,7 +439,7 @@ class BookingTicketView(generics.RetrieveAPIView):
             # collect unused ticket QR codes for confirmed bookings
             tickets_qs = BookingModel.Ticket.objects.filter(
                 booking__in=confirmed_bookings, is_used=False
-            )
+            ).select_related("booking", "booking__experience")
             tickets = ContentSerializer.TicketSerializer(tickets_qs, many=True).data
         else:
             continue_bookings = {}
