@@ -39,7 +39,7 @@ api.interceptors.response.use(
       // console.log("[Interceptor] Attempting token refresh...");
       originalRequest._retry = true;
       try {
-        const refreshResponse = await api.post("/auth/refresh/");
+        await api.post("/auth/refresh/");
         // console.log(
         //   "[Interceptor] Token refresh successful, retrying original request",
         // );

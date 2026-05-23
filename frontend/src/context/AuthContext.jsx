@@ -7,7 +7,7 @@ export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const checkUserStatus = useCallback(async () => {
     try {

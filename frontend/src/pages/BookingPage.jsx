@@ -14,13 +14,20 @@ function BookingPage() {
   const [ticketCount, setTicketCount] = useState(1);
 
   useEffect(() => {
-    setLoading(true);
-    setError("");
-    api
-      .get(`/api/experience/${id}`)
-      .then((res) => setExperience(res.data))
-      .catch(() => setError("Unable to load booking details."))
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await api.get(`/api/experience/${id}`);
+        setExperience(res.data);
+      } catch {
+        setError("Unable to load booking details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
 
   const dates = useMemo(() => {

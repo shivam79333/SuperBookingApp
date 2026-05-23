@@ -98,7 +98,7 @@ export default function LoginSignup() {
       closeLoginModal();
       navigate("/");
     } catch (err) {
-      alert("Invalid OTP");
+      alert(err.message || "Invalid OTP");
     }
   };
 
