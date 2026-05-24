@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from django.contrib.auth.models import User
+from django.db.models import Avg, Count, Q
 from user.models import User_Data
 from booking.models import Booking
 from django.conf import settings
@@ -47,8 +48,17 @@ class ExperienceView(generics.RetrieveAPIView):
     lookup_field = "public_id"
 
     def get_queryset(self):
-        return ContentModel.Experience.objects.filter(
-            public_id=self.kwargs["public_id"]
+        return (
+            ContentModel.Experience.objects.filter(public_id=self.kwargs["public_id"])
+            .annotate(
+                average_rating=Avg(
+                    "reviews__rating", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+                total_reviews=Count(
+                    "reviews", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+            )
+            .select_related("category", "location")
         )
 
 
@@ -57,7 +67,18 @@ class ExperienceListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return ContentModel.Experience.objects.all()
+        return (
+            ContentModel.Experience.objects.filter(deleted_at__isnull=True)
+            .annotate(
+                average_rating=Avg(
+                    "reviews__rating", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+                total_reviews=Count(
+                    "reviews", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+            )
+            .select_related("category", "location")
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -71,7 +92,21 @@ class ExperienceCategoryView(generics.ListAPIView):
 
     def get_queryset(self):
         category_name = self.kwargs["category"]
-        return ContentModel.Experience.objects.filter(category_id__name=category_name)
+        return (
+            ContentModel.Experience.objects.filter(
+                category_id__name=category_name, deleted_at__isnull=True
+            )
+            .annotate(
+                average_rating=Avg(
+                    "reviews__rating", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+                total_reviews=Count(
+                    "reviews", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+            )
+            .select_related("category", "location")
+            .prefetch_related("reviews")
+        )
 
 
 class LocationListView(generics.ListAPIView):
@@ -450,12 +485,6 @@ class BookingTicketView(generics.RetrieveAPIView):
         return Response(response_data)
 
 
-class SignupView(generics.CreateAPIView):
-    serializer_class = UserDataRegisterSerializer
-    permission_classes = [AllowAny]
-    queryset = User_Data.objects.all()
-
-
 class CreateReviewView(APIView):
     permission_classes = [AllowAny]
 
@@ -561,4 +590,25 @@ class DeleteReviewView(APIView):
         review.soft_delete()
         return Response(
             {"message": "Review deleted successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class RetrieveExperienceReviewsView(generics.ListAPIView):
+    """Paginated list of reviews for an experience"""
+
+    serializer_class = ReviewSerializer
+    permission_classes = [AllowAny]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        experience_public_id = self.kwargs.get("experience_public_id")
+        if not experience_public_id:
+            return ReviewModel.objects.none()
+
+        return (
+            ReviewModel.objects.filter(
+                experience_id__public_id=experience_public_id, deleted_at__isnull=True
+            )
+            .select_related("user_id__user", "experience_id")
+            .order_by("-created_at")
         )

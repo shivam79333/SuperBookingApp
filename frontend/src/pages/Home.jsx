@@ -6,22 +6,17 @@ import CategoryCard from "../components/CategoryCard";
 import image1 from "../assets/image1.png";
 import BookingCard from "../components/BookingCard";
 
-
-
 const heroSlides = [
   {
-    image:
-      image1,
+    image: image1,
     label: "Offer Closes Soon!!",
   },
   {
-    image:
-      image1,
+    image: image1,
     label: "Explore Heritage Sites",
   },
   {
-    image:
-      image1,
+    image: image1,
     label: "Discover Ancient Wonders",
   },
 ];
@@ -108,7 +103,6 @@ function Home() {
 
   return (
     <div className="body">
-
       {/* Hero Banner  */}
       <HeroBanner />
 
@@ -123,7 +117,7 @@ function Home() {
               {Array.isArray(homeData.continue_booking) ? (
                 homeData.continue_booking.map((booking) => (
                   <BookingCard key={booking.id} booking={booking}>
-                  {/*  <h3>{booking.experience_name}</h3>
+                    {/*  <h3>{booking.experience_name}</h3>
                     <p>Reference: {booking.booking_reference}</p>
                     <p>Date: {booking.booking_date}</p>
                     <p>Tickets: {booking.total_tickets}</p>
@@ -140,7 +134,7 @@ function Home() {
 
       {/* Explore Locations */}
       {homeData.explore_locations && (
-        <section className="explore-locations-section">
+        <section className="explore-locations-section pb-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-brand-dark mb-6">
             {homeData.explore_locations.label}
           </h2>
@@ -160,11 +154,12 @@ function Home() {
             key={category.category + category.pagination.current_page}
           >
             {/* Header — title only, no arrows */}
-            <h2 className="text-2xl sm:text-3xl font-bold text-brand-dark mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-brand-dark mb-4 mt-4">
               {category.category}
             </h2>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 items-stretch">
+            {/* <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 items-stretch"> */}
+            <div className="experience-grid">
               {category.experiences.map((exp) => (
                 <ExperienceCard key={exp.id} experience={exp} />
               ))}

@@ -10,7 +10,18 @@ import { getFirebaseConfig } from "./config";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = getFirebaseConfig();
 
+// Debug check: Ensure essential config values exist
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error(
+    "Firebase Configuration is missing! Check your .env file and ensure " +
+      "variables are prefixed with VITE_. Current Config:",
+    firebaseConfig,
+  );
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Export services
 export const auth = getAuth(app);
 export const db = getFirestore(app);

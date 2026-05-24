@@ -9,6 +9,13 @@ from reviews.models import Review as ReviewModel
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+
+    def get_user_name(self, obj):
+        if obj.user_id and obj.user_id.user:
+            return obj.user_id.user.get_full_name() or obj.user_id.user.username
+        return "Anonymous"
+
     def create(self, validated_data):
         request = self.context.get("request")
         if request is None:  # or not request.user.is_authenticated
@@ -23,6 +30,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = ReviewModel
         fields = [
             "id",
+            "user_name",
             "user_id",
             "experience_id",
             "rating",
@@ -34,6 +42,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "user_name",
             "user_id",
             "helpful_count",
             "created_at",
@@ -45,6 +54,9 @@ class ReviewSerializer(serializers.ModelSerializer):
 class ExperienceSerializer(serializers.ModelSerializer):
     category = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentModel.Experience
@@ -63,6 +75,9 @@ class ExperienceSerializer(serializers.ModelSerializer):
             "opening_time",
             "closing_time",
             "last_entry_time",
+            "average_rating",
+            "total_reviews",
+            "reviews",
             "created_at",
             "updated_at",
             "deleted_at",
@@ -73,6 +88,36 @@ class ExperienceSerializer(serializers.ModelSerializer):
 
     def get_location(self, obj):
         return obj.location.name
+
+    def get_average_rating(self, obj):
+        # Use annotated average_rating if available (from queryset annotation)
+        if hasattr(obj, "average_rating") and obj.average_rating is not None:
+            return round(float(obj.average_rating), 2)
+        return None
+
+    def get_total_reviews(self, obj):
+        # Use annotated total_reviews if available (from queryset annotation)
+        if hasattr(obj, "total_reviews"):
+            return obj.total_reviews
+        return 0
+
+    def get_reviews(self, obj):
+        reviews = obj.reviews.filter(deleted_at__isnull=True).order_by("-created_at")
+        request = self.context.get("request")
+
+        # Initialize paginator with specific page size
+        paginator = StandardResultsSetPagination()
+        paginator.page_size = 10
+
+        if request:
+            paginated_reviews = paginator.paginate_queryset(reviews, request)
+            if paginated_reviews is not None:
+                serializer = ReviewSerializer(
+                    paginated_reviews, many=True, context={"request": request}
+                )
+                return paginator.get_paginated_response(serializer.data).data
+
+        return ReviewSerializer(reviews[:10], many=True).data
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -88,6 +133,8 @@ class LocationSerializer(serializers.ModelSerializer):
 class ExperienceShortSerializer(serializers.ModelSerializer):
     category = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentModel.Experience
@@ -99,6 +146,8 @@ class ExperienceShortSerializer(serializers.ModelSerializer):
             "image_url",
             "entry_fee_base",
             "is_open",
+            "average_rating",
+            "total_reviews",
         ]
 
     def get_category(self, obj):
@@ -106,6 +155,18 @@ class ExperienceShortSerializer(serializers.ModelSerializer):
 
     def get_location(self, obj):
         return obj.location.name
+
+    def get_average_rating(self, obj):
+        # Use annotated average_rating if available (from queryset annotation)
+        if hasattr(obj, "average_rating") and obj.average_rating is not None:
+            return round(float(obj.average_rating), 2)
+        return None
+
+    def get_total_reviews(self, obj):
+        # Use annotated total_reviews if available (from queryset annotation)
+        if hasattr(obj, "total_reviews"):
+            return obj.total_reviews
+        return 0
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -172,12 +233,14 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingModel.Booking
         fields = [
+            "reference",
             "experience",
             "booking_date",
             "slot_time",
             "total_tickets",
             "special_requests",
         ]
+        read_only_fields = ["reference"]
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -268,10 +331,14 @@ class CreatePaymentSerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     qr_image = serializers.SerializerMethodField()
-    booking_reference = serializers.CharField(source="booking.reference", read_only=True)
+    booking_reference = serializers.CharField(
+        source="booking.reference", read_only=True
+    )
     booking_date = serializers.DateField(source="booking.booking_date", read_only=True)
     slot_time = serializers.TimeField(source="booking.slot_time", read_only=True)
-    total_tickets = serializers.IntegerField(source="booking.total_tickets", read_only=True)
+    total_tickets = serializers.IntegerField(
+        source="booking.total_tickets", read_only=True
+    )
     total_amount = serializers.DecimalField(
         source="booking.total_amount", max_digits=10, decimal_places=2, read_only=True
     )

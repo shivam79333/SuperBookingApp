@@ -153,11 +153,15 @@ function BookingPage() {
       return;
     }
 
+    const slotTime = selectedOption.time
+      ? selectedOption.time.replace(" hrs", "")
+      : null;
+
     const bookingData = {
       experience: experience.public_id,
       booking_date: dates[selectedDateIndex].iso,
-      total_tickets: ticketCount.toString(),
-      total_amount: totalPrice.toString(),
+      total_tickets: parseInt(ticketCount, 10),
+      slot_time: slotTime,
     };
 
     try {
@@ -224,7 +228,7 @@ function BookingPage() {
             </div>
           </div>
 
-          {/* <div className="booking-section booking-dynamic">
+          <div className="booking-section booking-dynamic">
             <div className="section-title">
               <h2>
                 {categorySlug.includes("concert")
@@ -283,7 +287,7 @@ function BookingPage() {
                 ))}
               </div>
             )}
-            </div> */}
+          </div>
         </div>
 
         <aside className="booking-sidebar">

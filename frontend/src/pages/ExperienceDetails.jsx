@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useContext } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import api from "../api/api";
+import AuthContext from "../context/AuthContext";
+import ModalContext from "../context/ModalContext";
 import "../styles/ExperienceDetails.css";
 
 export function ExperienceDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useContext(AuthContext);
+  const { openLoginModal } = useContext(ModalContext);
   const [experience, setExperience] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     getItem();
@@ -50,14 +56,14 @@ export function ExperienceDetails() {
   const goToPreviousImage = () => {
     if (!images.length) return;
     setSelectedImageIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1
+      prevIndex === 0 ? images.length - 1 : prevIndex - 1,
     );
   };
 
   const goToNextImage = () => {
     if (!images.length) return;
     setSelectedImageIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
   };
 
@@ -72,26 +78,27 @@ export function ExperienceDetails() {
     return `${normalizedHour}:${String(minute).padStart(2, "0")} ${suffix}`;
   };
 
-  const reviewItems = [
-    {
-      id: 1,
-      name: "List item",
-      text: "Category trip experience exceeded our expectations.",
-    },
-    {
-      id: 2,
-      name: "List item",
-      text: "Category trip was smooth, quick and well-organized.",
-    },
-    {
-      id: 3,
-      name: "List item",
-      text: "Category trip was scenic and service was excellent.",
-    },
-  ];
+  const handleBookNow = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      openLoginModal();
+      return;
+    }
+    navigate(`/booking/${id}`);
+  };
+
+  const reviewItems = useMemo(() => {
+    if (!experience?.reviews) return [];
+    return (
+      experience.reviews.results ||
+      (Array.isArray(experience.reviews) ? experience.reviews : [])
+    );
+  }, [experience]);
 
   if (loading) {
-    return <div className="experience-details-state">Loading experience...</div>;
+    return (
+      <div className="experience-details-state">Loading experience...</div>
+    );
   }
 
   if (error || !experience) {
@@ -209,13 +216,21 @@ export function ExperienceDetails() {
                 </p>
                 <p className="meta-label">Timings</p>
                 <p className="meta-value">{`${formatTime(
-                  experience.opening_time
+                  experience.opening_time,
                 )} - ${formatTime(experience.closing_time)}`}</p>
               </div>
 
-              <Link to={`/booking/${id}`} className="book-now-button">
+              <button
+                onClick={handleBookNow}
+                className="book-now-button"
+                style={{
+                  cursor: "pointer",
+                  border: "none",
+                  textDecoration: "none",
+                }}
+              >
                 Book Now
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -228,12 +243,18 @@ export function ExperienceDetails() {
                     ▲
                   </div>
                   <div className="review-copy">
-                    <h4>{review.name}</h4>
-                    <p>{review.text}</p>
+                    <h4>{review.user_name}</h4>
+                    <p>{review.review_text}</p>
                   </div>
-                  <div className="review-rating">★★★★★</div>
+                  <div className="review-rating">
+                    {"★".repeat(review.rating)}
+                    {"☆".repeat(5 - review.rating)}
+                  </div>
                 </article>
               ))}
+              {reviewItems.length === 0 && (
+                <p className="text-gray-500">No reviews yet.</p>
+              )}
             </div>
           </div>
         </section>

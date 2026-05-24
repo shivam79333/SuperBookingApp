@@ -74,7 +74,14 @@ function ExperienceCard({ experience }) {
 
         {/* Card Body */}
         <div className="p-5 flex-1 flex flex-col">
-          <p className="text-sm text-gray-500 mb-1">{experience.location}</p>
+          <div className="flex flex-row justify-between">
+            <p className="text-sm text-gray-500 mb-1">{experience.location}</p>
+            {experience.average_rating && (
+              <p className="meta-value">
+                {experience.average_rating}⭐({experience.total_reviews})
+              </p>
+            )}
+          </div>
 
           <h3 className="font-bold text-lg text-gray-900 leading-snug mb-4 overflow-hidden whitespace-nowrap overflow-ellipsis">
             {experience.name}
