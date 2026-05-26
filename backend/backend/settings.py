@@ -153,7 +153,13 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5179",
+    "http://localhost:5180",
+    "http://localhost:5183",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 FIREBASE_KEY_PATH = os.path.join(BASE_DIR, "firebase-service-account.json")

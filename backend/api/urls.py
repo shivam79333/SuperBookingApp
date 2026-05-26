@@ -17,6 +17,11 @@ urlpatterns = [
     ),
     path("location/", views.LocationListView.as_view(), name="location_list"),
     path("location/<str:public_id>", views.LocationView.as_view(), name="location"),
+    path(
+        "location/<str:public_id>/experiences/",
+        views.LocationExperienceListView.as_view(),
+        name="location_experiences",
+    ),
     path("experiences/", views.ExperienceListView.as_view(), name="experience_list"),
     path("category/<int:id>", views.CategoryView.as_view(), name="category"),
     path("booking/<str:reference>", views.BookingView.as_view(), name="booking"),

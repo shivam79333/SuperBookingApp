@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 
 function LocationCard({ location }) {
+  const locationId = location.public_id || location.id;
+
   return (
-    <Link to={`/location/${location.id}`} className="block h-full">
+    <Link to={`/location/${locationId}`} className="block h-full">
       <div className="relative group cursor-pointer rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-48 md:h-56 w-full">
 
         {/* Background Image */}
