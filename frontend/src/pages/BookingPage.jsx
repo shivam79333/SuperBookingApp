@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
 import "../styles/BookingPage.css";
+import Loading from "../components/Loading";
 
 function BookingPage() {
   const navigate = useNavigate();
@@ -153,11 +154,15 @@ function BookingPage() {
       return;
     }
 
+    const slotTime = selectedOption.time
+      ? selectedOption.time.replace(" hrs", "")
+      : null;
+
     const bookingData = {
       experience: experience.public_id,
       booking_date: dates[selectedDateIndex].iso,
-      total_tickets: ticketCount.toString(),
-      total_amount: totalPrice.toString(),
+      total_tickets: parseInt(ticketCount, 10),
+      slot_time: slotTime,
     };
 
     try {
@@ -185,7 +190,7 @@ function BookingPage() {
     : "Loading booking details";
 
   if (loading) {
-    return <div className="booking-page">Loading booking experience…</div>;
+    return <Loading />;
   }
 
   if (error) {
@@ -224,7 +229,7 @@ function BookingPage() {
             </div>
           </div>
 
-          {/* <div className="booking-section booking-dynamic">
+          <div className="booking-section booking-dynamic">
             <div className="section-title">
               <h2>
                 {categorySlug.includes("concert")
@@ -283,7 +288,7 @@ function BookingPage() {
                 ))}
               </div>
             )}
-            </div> */}
+          </div>
         </div>
 
         <aside className="booking-sidebar">

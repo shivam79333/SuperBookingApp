@@ -13,7 +13,9 @@ import LoginSignup from "./components/LoginSignup";
 import Footer from "./components/Footer";
 import SuccessPage from "./pages/SuccessPage";
 import FailedPage from "./pages/FailedPage";
+
 import PaymentPage from "./pages/PaymentPage";
+import SingleCategoryPage from "./pages/SingleCategoryPage";
 
 function AppContent() {
   const { isLoginModalOpen } = useContext(ModalContext);
@@ -29,8 +31,11 @@ function AppContent() {
         <Route path="/booking/:id" element={<BookingPage />} />
         <Route path="/payment/:id" element={<PaymentPage />} />
         <Route path="/my-bookings" element={<MyBookings />} />
+
+
         <Route path="/payments/success" element={<SuccessPage />} />
         <Route path="/payments/failed" element={<FailedPage />} />
+        <Route path="/category/:id" element={<SingleCategoryPage />} />
       </Routes>
       <Footer />
     </main>

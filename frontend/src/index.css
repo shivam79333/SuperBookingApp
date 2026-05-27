@@ -121,3 +121,10 @@ div::-webkit-scrollbar {
     --visible-cols: 5;
   }
 }
+
+html,
+body,
+#root {
+  overflow-x: hidden;
+  width: 100%;
+}
