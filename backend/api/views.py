@@ -126,6 +126,28 @@ class LocationView(generics.RetrieveAPIView):
         return ContentModel.Location.objects.filter(public_id=self.kwargs["public_id"])
 
 
+class LocationExperienceListView(generics.ListAPIView):
+    serializer_class = ContentSerializer.ExperienceShortSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return (
+            ContentModel.Experience.objects.filter(
+                location__public_id=self.kwargs["public_id"], deleted_at__isnull=True
+            )
+            .annotate(
+                average_rating=Avg(
+                    "reviews__rating", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+                total_reviews=Count(
+                    "reviews", filter=Q(reviews__deleted_at__isnull=True)
+                ),
+            )
+            .select_related("category", "location")
+            .order_by("name")
+        )
+
+
 class BookingView(generics.RetrieveAPIView):
     serializer_class = ContentSerializer.BookingDetailSerializer
     permission_classes = [IsAuthenticated]

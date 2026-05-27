@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useContext } from "react";
 import Home from "./pages/Home";
 import { ExperienceDetails } from "./pages/ExperienceDetails";
-import { LocationDetails } from "./pages/LocationDetails";
+import LocationPage from "./pages/LocationPage";
 import BookingPage from "./pages/BookingPage";
 import MyBookings from "./pages/MyBookings";
 import Navbar from "./components/Navbar";
@@ -28,7 +28,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/experience/:id" element={<ExperienceDetails />} />
-        <Route path="/location/:id" element={<LocationDetails />} />
+        <Route path="/location/:id" element={<LocationPage />} />
         <Route path="/booking/:id" element={<BookingPage />} />
         <Route path="/payment/:id" element={<PaymentPage />} />
         <Route
