@@ -25,7 +25,7 @@ function Navbar() {
   const [visible, setVisible] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { isSearchOpen, openSearch, closeSearch, searchInitialQuery } = useContext(ModalContext);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -103,6 +103,12 @@ function Navbar() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, selectedLocation, isSearchOpen]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setSearchQuery(searchInitialQuery || "");
+    }
+  }, [isSearchOpen, searchInitialQuery]);
 
   return (
     <>
@@ -199,7 +205,7 @@ function Navbar() {
               )}
             </div>
             <button
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => openSearch()}
               className="flex-1 flex items-center justify-between text-left text-xs text-outline-variant pl-3 pr-2 py-0.5 focus:outline-none cursor-pointer"
               style={{ transform: 'none', boxShadow: 'none' }}
             >
@@ -211,7 +217,7 @@ function Navbar() {
           {/* Right-aligned User Actions */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => openSearch()}
               className={`sm:hidden flex w-10 h-10 rounded-full border border-outline-variant text-on-surface items-center justify-center hover:text-primary hover:border-primary transition-all shadow-xs cursor-pointer bg-surface-container-lowest ${
                 showSearch ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none w-0 overflow-hidden border-none p-0 m-0"
               }`}
@@ -281,7 +287,7 @@ function Navbar() {
             {/* Modal Header */}
             <div className="p-4 border-b border-outline-variant flex items-center gap-3">
               <button
-                onClick={() => setIsSearchOpen(false)}
+                onClick={() => closeSearch()}
                 className="text-on-surface-variant hover:text-on-surface cursor-pointer sm:hidden flex items-center"
               >
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -338,7 +344,7 @@ function Navbar() {
               </div>
 
               <button
-                onClick={() => setIsSearchOpen(false)}
+                onClick={() => closeSearch()}
                 className="text-outline-variant hover:text-on-surface-variant cursor-pointer hidden sm:block"
               >
                 <span className="material-symbols-outlined text-xl">close</span>

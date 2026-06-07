@@ -8,6 +8,7 @@ import api from "../api/api";
 import BookingCard from "../components/BookingCard";
 import Loading from "../components/Loading";
 import LocationContext from "../context/LocationContext";
+import ModalContext from "../context/ModalContext";
 import TrailCard from "../components/TrailCard";
 import LocationBentoCard from "../components/LocationBentoCard";
 
@@ -282,23 +283,13 @@ function CategoryGridCard({ category }) {
 function Home() {
   const navigate = useNavigate();
   const { selectedLocation } = useContext(LocationContext);
+  const { openSearch } = useContext(ModalContext);
 
   // Hero Carousel (from DemoHome Section 1)
   const [currentSlide, setCurrentSlide] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setCurrentSlide(p => (p + 1) % HERO_SLIDES.length), 4500);
     return () => clearInterval(t);
-  }, []);
-
-  // Search (from DemoHome Section 1)
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchRef = useRef(null);
-  const QUICK_CHIPS = ["Jaipur Forts", "Delhi Heritage Walk", "Temples in Varanasi", "Hampi Ruins", "UNESCO Sites"];
-  useEffect(() => {
-    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchFocused(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
   }, []);
   const [homeData, setHomeData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -529,42 +520,21 @@ function Home() {
           </p>
 
           {/* Search bar */}
-          <div ref={searchRef} className="relative max-w-2xl">
-            <div className={`flex items-center bg-surface-container rounded-2xl shadow-2xl transition-all duration-200 ${searchFocused ? "ring-4 ring-primary/40" : ""}`}>
+          <div className="relative max-w-2xl" onClick={() => openSearch()}>
+            <div className="flex items-center bg-surface-container rounded-2xl shadow-2xl transition-all duration-200 hover:ring-2 hover:ring-primary/20 cursor-pointer">
               <div className="pl-5 pr-2 text-on-surface-variant">
                 <Search className="w-5 h-5" />
               </div>
               <input
                 type="text"
-                value={searchQuery}
-                onFocus={() => setSearchFocused(true)}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                readOnly
                 placeholder="Where are you going?"
-                className="flex-1 bg-transparent border-none text-on-surface focus:outline-none placeholder-on-surface-variant/60 text-sm sm:text-base py-4 pr-4"
+                className="flex-1 bg-transparent border-none text-on-surface focus:outline-none placeholder-on-surface-variant/60 text-sm sm:text-base py-4 pr-4 cursor-pointer"
               />
-              <button onClick={() => navigate("/states")} className="m-2 bg-primary hover:bg-opacity-95 text-on-primary font-bold px-5 sm:px-7 py-3 rounded-xl text-sm transition-all duration-200 hover:scale-105 active:scale-95 shrink-0">
+              <button className="m-2 bg-primary hover:bg-opacity-95 text-on-primary font-bold px-5 sm:px-7 py-3 rounded-xl text-sm shrink-0 cursor-pointer">
                 Explore
               </button>
             </div>
-
-            {/* Suggestions */}
-            {searchFocused && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant p-4 z-30">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 px-1">Popular searches</p>
-                <div className="space-y-0.5">
-                  {QUICK_CHIPS.map((chip) => (
-                    <button
-                      key={chip}
-                      onClick={() => { setSearchQuery(chip); setSearchFocused(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-container rounded-xl text-on-surface text-sm transition-colors text-left"
-                    >
-                      <Search className="w-3.5 h-3.5 text-on-surface-variant" />
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Quick chips */}
@@ -573,8 +543,11 @@ function Home() {
             {["Taj Mahal", "Amer Fort", "Varanasi Ghats", "Hampi"].map((chip) => (
               <button
                 key={chip}
-                onClick={() => setSearchQuery(chip)}
-                className="bg-white/10 hover:bg-white/20 text-white text-xs px-3.5 py-1.5 rounded-full border border-white/15 backdrop-blur-sm transition-all duration-150 hover:scale-105"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openSearch(chip);
+                }}
+                className="bg-white/10 hover:bg-white/20 text-white text-xs px-3.5 py-1.5 rounded-full border border-white/15 backdrop-blur-sm transition-all duration-150 hover:scale-105 cursor-pointer"
               >
                 {chip}
               </button>
