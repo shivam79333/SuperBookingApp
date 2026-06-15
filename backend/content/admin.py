@@ -6,6 +6,23 @@ from .models import (
     Experience,
     PricingRule,
     OperatingHours,
+    Provider,
+    TicketType,
+    Collection,
+    CollectionExperience,
 )
 
-admin.site.register([State, City, Category, Experience, PricingRule, OperatingHours])
+myModels = [
+    State,
+    City,
+    Category,
+    Experience,
+    PricingRule,
+    OperatingHours,
+    Provider,
+    TicketType,
+    Collection,
+    CollectionExperience,
+]
+
+admin.site.register(myModels)
